@@ -1,0 +1,61 @@
+#!/bin/bash
+
+echo "Run this script as a root or sudo."
+echo "Are you? yes / no"
+read answer
+if [[ $answer == "yes" ]] || [[ $answer == "y" ]]; then
+    echo "OK"
+else
+    exit
+fi
+
+echo "what is your name : "
+read name
+
+echo "What is your Surname : "
+read surname
+
+echo "Enter your username"
+read username
+if [[ $username == $null ]]; then
+    echo "username can not be empty..."; exit
+else
+    if grep -q $username /etc/passwd; then
+        echo "username is exist"; exit
+    else
+        echo "Username is OK"
+    fi
+fi
+
+
+
+echo "Set expire date"
+echo "Year"
+read year
+echo "Month"
+read month
+echo "Day"
+read day
+
+if [[ $day == $null ]] || [[  $day -le 1 || $day -ge 32 ]]; then
+    day="01"
+elif [[ $month == $null ]] || [[  $month -le 1 || $month -ge 13 ]]; then
+    month="01"
+elif [[ $year == $null ]] || [[  $year -le 2022 || $year -ge 2501 ]]; then
+    year="2050"
+fi
+
+/usr/sbin/useradd -s /bin/bash -e $year-$month-$day -c "$name $surname" -m -d /home/$username  $username
+
+echo "Do you wannt to be a super user for $username type yes/no"
+read superuser
+
+if [[ $superuser == "yes" ]]; then
+    echo "$username ALL=(ALL:ALL) ALL" >> /etc/sudoers
+else
+    echo "Not super user"
+fi
+echo "Set password for $username"
+/usr/bin/passwd $username
+
+echo "user $username created"
