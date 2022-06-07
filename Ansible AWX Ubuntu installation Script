@@ -1,0 +1,188 @@
+#!/bin/bash
+
+# With this script, AWX is installed on "Ubuntu 20.04 Desktop".
+
+echo 'Below are the hardware required for this installation.'
+echo 'CPU = 4 Core
+Ram = 8 GB 
+HDD = 30GB
+'
+cd /home/
+
+echo "Run this script as a root or sudo."
+echo "Are you? yes / no"
+read answer
+if [[ $answer == "yes" ]] || [[ $answer == "y" ]]; then
+    echo "OK"
+else
+    exit
+fi
+
+
+
+apt-get update -y &&  spy-get upgrade -y
+
+REQUIRED_PKG="curl"
+PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+echo Checking for $REQUIRED_PKG: $PKG_OK
+if [ "" = "$PKG_OK" ]; then
+  echo "No $REQUIRED_PKG. Setting up $REQUIRED_PKG."
+  apt-get --yes install $REQUIRED_PKG 
+fi
+
+curl -sfL https://get.k3s.io | sudo bash -
+if [ $? -eq 0 ]; then
+   chmod 644 /etc/rancher/k3s/k3s.yaml
+else
+    echo "An error was encountered. exiting the code"
+    exit
+  
+fi
+
+kubectl get nodes
+
+echo 'wait 10 sec'
+sleep 10
+
+REQUIRED_PKG="git"
+PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+echo Checking for $REQUIRED_PKG: $PKG_OK
+if [ "" = "$PKG_OK" ]; then
+  echo "No $REQUIRED_PKG. Setting up $REQUIRED_PKG."
+  apt-get --yes install $REQUIRED_PKG 
+fi
+
+
+REQUIRED_PKG="build-essential"
+PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+echo Checking for $REQUIRED_PKG: $PKG_OK
+if [ "" = "$PKG_OK" ]; then
+  echo "No $REQUIRED_PKG. Setting up $REQUIRED_PKG."
+  apt-get --yes install $REQUIRED_PKG 
+fi
+
+git clone https://github.com/ansible/awx-operator.git
+
+echo '-------------------------------------------------------------'
+
+export NAMESPACE=awx
+kubectl create ns ${NAMESPACE}
+echo '-------------------------------------------------------------'
+
+
+sleep 5
+kubectl config set-context --current --namespace=$NAMESPACE 
+
+echo '-------------------------------------------------------------'
+
+cd awx-operator/
+
+
+REQUIRED_PKG="jq"
+PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+echo Checking for $REQUIRED_PKG: $PKG_OK
+if [ "" = "$PKG_OK" ]; then
+  echo "No $REQUIRED_PKG. Setting up $REQUIRED_PKG."
+  apt-get --yes install $REQUIRED_PKG 
+fi
+
+echo '-------------------------------------------------------------'
+
+RELEASE_TAG=`curl -s https://api.github.com/repos/ansible/awx-operator/releases/latest | grep tag_name | cut -d '"' -f 4`
+
+echo $RELEASE_TAG
+
+git checkout $RELEASE_TAG
+
+export NAMESPACE=awx
+
+echo '-------------------------------------------------------------'
+
+make deploy
+
+echo "Deployment finish"
+
+kubectl get pods
+
+echo '-------------------------------------------------------------'
+
+echo 'wait 360 second'
+
+sleep 360
+
+echo '-------------------------------------------------------------'
+
+cat <<EOF | kubectl create -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-data-pvc
+  namespace: awx
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+EOF
+
+echo -ne '\n'
+
+echo '-------------------------------------------------------------'
+
+echo "---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx
+spec:
+  service_type: nodeport
+  projects_persistence: true
+  projects_storage_access_mode: ReadWriteOnce
+  web_extra_volume_mounts: |
+    - name: static-data
+      mountPath: /var/lib/projects
+  extra_volumes: |
+    - name: static-data
+      persistentVolumeClaim:
+        claimName: static-data-pvc" > awx-deploy.yml
+
+
+
+kubectl apply -f awx-deploy.yml
+
+echo 'wait 360 seconds'
+
+sleep 360
+
+echo '-------------------------------------------------------------'
+
+kubectl get secret awx-admin-password -o go-template='{{range $k,$v := .data}}{{printf "%s: " $k}}{{if not $v}}{{$v}}{{else}}{{$v | base64decode}}{{end}}{{"\n"}}{{end}}' > password.txt
+
+echo 'Password saving in password.txt file in /home/awx-operator/ '
+
+
+kubectl get svc -l "app.kubernetes.io/managed-by=awx-operator"
+
+echo '-------------------------------------------------------------'
+echo '-------------------------------------------------------------'
+
+echo 'Ubuntu 20.04 AWX installation complate...'
+echo 'You need to wait at least 10 min for deployement process complete.'
+echo 'then open browser http://localhost:30080'
+
+sleep 20
+
+echo '-------------------------------------------------------------'
+echo '-------------------------------------------------------------'
+
+echo "Wreitten by : Huseyin OZER
+      System And Cloud Administrator
+      email : hsynozer84@gmail.com  "
+
+echo '-------------------------------------------------------------'
+
+sleep 10
+
+exit
