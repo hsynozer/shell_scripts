@@ -20,7 +20,7 @@ fi
 
 
 
-apt-get update -y &&  spy-get upgrade -y
+apt-get update -y &&  apt-get upgrade -y
 
 REQUIRED_PKG="curl"
 PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
