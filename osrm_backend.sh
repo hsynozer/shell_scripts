@@ -1,7 +1,7 @@
 #!/bin/bash
 # OSRM Backend
 
-apt install build-essential git cmake pkg-config libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev npm git cmake make wget -y
+apt-get install build-essential git cmake pkg-config libbz2-dev libstxxl-dev libstxxl1v5 libxml2-dev libzip-dev libboost-all-dev lua5.2 liblua5.2-dev libtbb-dev npm git cmake make wget -y
 cd /root
 git clone https://github.com/Project-OSRM/osrm-backend.git
 cd /root/osrm-backend
