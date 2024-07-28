@@ -1,3 +1,4 @@
+#!/bin/bash
 cd /root
 apt install libssl-dev libasio-dev libglpk-dev git make cmake npm -y
 git clone https://github.com/VROOM-Project/vroom.git
